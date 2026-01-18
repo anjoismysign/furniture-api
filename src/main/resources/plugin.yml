@@ -1,0 +1,16 @@
+name: furnitureapi
+version: 1.698.32
+main: io.github.anjoismysign.furnitureapi.FurnitureApiPlugin
+api-version: 1.21.2
+authors: [ anjoismysign ]
+commands:
+  furnitureapi:
+    description: Main command for FurnitureAPI
+    usage: /<command> <reload|item>
+permissions:
+  furnitureapi.reload:
+    description: Allows reloading the furniture configurations
+    default: op
+  furnitureapi.item:
+    description: Allows getting furniture items via command
+    default: op
