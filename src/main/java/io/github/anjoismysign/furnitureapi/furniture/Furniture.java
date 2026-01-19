@@ -89,7 +89,7 @@ public record Furniture(@NotNull NamespacedKey namespacedKey,
             return;
         }
         CommandSender sender = executeAsServer ? Bukkit.getConsoleSender() : player;
-        Bukkit.dispatchCommand(sender, command);
+        Bukkit.dispatchCommand(sender, command.replace("%player%", player.getName()));
     }
 
 }
