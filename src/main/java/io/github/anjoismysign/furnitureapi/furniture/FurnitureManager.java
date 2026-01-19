@@ -52,7 +52,6 @@ public class FurnitureManager {
                 structureManager.registerStructure(namespacedKey, structure);
                 var item = new Furniture(namespacedKey, command, executeAsServer);
                 furniture.add(item);
-                plugin.getLogger().info("Loaded furniture: " + namespacedKey);
             } catch (IOException | RuntimeException exception) {
                 plugin.getLogger().severe("Failed to load furniture structure for " + key + ": " + exception.getMessage());
             }

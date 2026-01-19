@@ -48,8 +48,6 @@ public class JsonStructureManager implements StructureManager{
         var worldName = block.getWorld().getName();
         var structures = getFurnitureStructures();
         var blockVector = block.getLocation().toVector().toBlockVector();
-        var logger = plugin.getLogger();
-        logger.info(blockVector.toString());
         var worldStructures = structures.storage().get(worldName);
         if (worldStructures == null) {
             return null;
@@ -60,7 +58,6 @@ public class JsonStructureManager implements StructureManager{
 
             for (var data : dataList) {
                 var cuboid = data.cuboid();
-                logger.info(cuboid.toString());
                 if (cuboid.isIn(blockVector)) {
                     return new SimpleFurnitureStructure(furnitureKey, worldName, data);
                 }

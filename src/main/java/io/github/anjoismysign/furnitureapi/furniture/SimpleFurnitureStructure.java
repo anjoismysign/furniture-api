@@ -46,8 +46,6 @@ public record SimpleFurnitureStructure(@NotNull NamespacedKey furnitureNamespace
         var compare = uuid.toString();
         entities.forEach(entity -> {
             var container = entity.getPersistentDataContainer();
-            var array = Arrays.toString(container.getKeys().stream().map(NamespacedKey::toString).toList().toArray());
-            plugin.getLogger().info(entity.getUniqueId()+": "+array);
             @Nullable var toString = container.get(FurnitureNamespacedKeys.STRUCTURE.getNamespacedKey(), PersistentDataType.STRING);
             if (toString == null){
                 return;
