@@ -32,54 +32,35 @@ public class JsonStructureManager implements StructureManager{
         furnitureStructures.serialize(furnitureStructuresFile);
     }
 
-    public void add(@NotNull FurnitureStructure furnitureStructure){
-        var simpleFurnitureStructure = (SimpleFurnitureStructure) furnitureStructure;
-        var storage = furnitureStructures.storage();
-        var worldName = simpleFurnitureStructure.worldName();
-        var furnitureNamespacedKey = simpleFurnitureStructure.furnitureNamespacedKey();
-        var data = simpleFurnitureStructure.data();
-        var worldStructures = storage.computeIfAbsent(worldName, k -> new HashMap<>());
-        worldStructures.computeIfAbsent(furnitureNamespacedKey, k -> new ArrayList<>())
-                .add(data);
+    @Override
+    public void add(@NotNull FurnitureStructure furnitureStructure) {
+        var simple = (SimpleFurnitureStructure) furnitureStructure;
+        furnitureStructures.addStructure(
+                simple.worldName(),
+                simple.furnitureNamespacedKey(),
+                simple.data()
+        );
     }
 
     @Override
     public @Nullable FurnitureStructure getFurnitureStructure(@NotNull Block block) {
         var worldName = block.getWorld().getName();
-        var structures = getFurnitureStructures();
-        var blockVector = block.getLocation().toVector().toBlockVector();
-        var worldStructures = structures.storage().get(worldName);
-        if (worldStructures == null) {
-            return null;
-        }
-        for (var entry : worldStructures.entrySet()) {
-            var furnitureKey = entry.getKey();
-            var dataList = entry.getValue();
+        var vector = block.getLocation().toVector().toBlockVector();
 
-            for (var data : dataList) {
-                var cuboid = data.cuboid();
-                if (cuboid.isIn(blockVector)) {
-                    return new SimpleFurnitureStructure(furnitureKey, worldName, data);
-                }
-            }
-        }
-        return null;
+        // O(1) Lookup
+        var pointer = furnitureStructures.getAt(worldName, vector);
+        if (pointer == null) return null;
+
+        return new SimpleFurnitureStructure(pointer.key(), worldName, pointer.data());
     }
 
     @Override
     public void remove(@NotNull FurnitureStructure furnitureStructure) {
-        var simpleFurnitureStructure = (SimpleFurnitureStructure) furnitureStructure;
-        var worldName = simpleFurnitureStructure.worldName();
-        var furnitureNamespacedKey = simpleFurnitureStructure.furnitureNamespacedKey();
-        var structures = getFurnitureStructures();
-        @Nullable var worldStructures = structures.storage().get(worldName);
-        if (worldStructures == null) {
-            return;
-        }
-        @Nullable var list = worldStructures.get(furnitureNamespacedKey);
-        if (list == null) {
-            return;
-        }
-        list.remove(simpleFurnitureStructure.data());
+        var simple = (SimpleFurnitureStructure) furnitureStructure;
+        furnitureStructures.removeStructure(
+                simple.worldName(),
+                simple.furnitureNamespacedKey(),
+                simple.data()
+        );
     }
 }

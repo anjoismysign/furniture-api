@@ -6,6 +6,7 @@ import io.github.anjoismysign.util.Cuboid;
 import org.bukkit.NamespacedKey;
 import org.bukkit.util.BlockVector;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileReader;
@@ -17,9 +18,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public record FurnitureStructures(@NotNull Map<String, Map<NamespacedKey, List<FurnitureStructureData>>> storage) {
+public record FurnitureStructures(@NotNull Map<String, Map<NamespacedKey, List<FurnitureStructureData>>> storage,
+                                  @NotNull Map<String, Map<BlockVector, StructureLookup>> spatialLookup) {
 
     private static final Gson GSON = new Gson();
+
+    public record StructureLookup(@NotNull NamespacedKey key, @NotNull FurnitureStructureData data) {}
+
+    private FurnitureStructures(@NotNull Map<String, Map<NamespacedKey, List<FurnitureStructureData>>> storage) {
+        this(storage, new HashMap<>());
+    }
 
     private static BlockVector blockVectorOf(@NotNull String string){
         var split = string.split(",");
@@ -46,39 +54,37 @@ public record FurnitureStructures(@NotNull Map<String, Map<NamespacedKey, List<F
     @NotNull
     public static FurnitureStructures READ(@NotNull File file) {
         Map<String, Map<NamespacedKey, List<FurnitureStructureData>>> storage = new HashMap<>();
-        if (!file.exists()) {
-            return new FurnitureStructures(storage);
-        }
+        FurnitureStructures structures = new FurnitureStructures(storage);
+
+        if (!file.exists()) return structures;
+
         try (var reader = new FileReader(file)) {
             var type = new TypeToken<Map<String, Map<String, List<SerializedStructure>>>>(){}.getType();
             Map<String, Map<String, List<SerializedStructure>>> rawData = GSON.fromJson(reader, type);
+
             if (rawData != null) {
                 rawData.forEach((worldName, furnitureMap) -> {
-                    Map<NamespacedKey, List<FurnitureStructureData>> worldStorage = new HashMap<>();
-                    Map<Cuboid, NamespacedKey> worldBlocks = new HashMap<>();
                     furnitureMap.forEach((keyString, serializedList) -> {
                         var key = NamespacedKey.fromString(keyString);
                         if (key == null) return;
 
-                        var structures = new ArrayList<FurnitureStructureData>();
-                        for (SerializedStructure serializedStructure : serializedList) {
-                            var uuid = UUID.fromString(serializedStructure.uuid);
-                            var min = blockVectorOf(serializedStructure.min);
-                            var max = blockVectorOf(serializedStructure.max);
-                            var cuboid = new Cuboid(min, max, worldName);
-                            var data = new FurnitureStructureData(cuboid, uuid);
-                            structures.add(data);
-                            worldBlocks.put(cuboid, key);
+                        for (SerializedStructure ser : serializedList) {
+                            var min = blockVectorOf(ser.min);
+                            var max = blockVectorOf(ser.max);
+                            var data = new FurnitureStructureData(
+                                    new Cuboid(min, max, worldName),
+                                    UUID.fromString(ser.uuid)
+                            );
+                            // Use addStructure to populate BOTH maps at once during load
+                            structures.addStructure(worldName, key, data);
                         }
-                        worldStorage.put(key, structures);
                     });
-                    storage.put(worldName, worldStorage);
                 });
             }
         } catch (IOException exception) {
             exception.printStackTrace();
         }
-        return new FurnitureStructures(storage);
+        return structures;
     }
 
     public void serialize(@NotNull File file) {
@@ -112,6 +118,45 @@ public record FurnitureStructures(@NotNull Map<String, Map<NamespacedKey, List<F
             this.uuid = uuid;
             this.min = min;
             this.max = max;
+        }
+    }
+
+    @Nullable
+    public FurnitureStructures.StructureLookup getAt(@NotNull String worldName, @NotNull BlockVector vector) {
+        var worldMap = spatialLookup.get(worldName);
+        return worldMap == null ? null : worldMap.get(vector);
+    }
+
+    public void addStructure(@NotNull String worldName, @NotNull NamespacedKey key, @NotNull FurnitureStructureData data) {
+        // 1. Update Persistent Storage
+        storage.computeIfAbsent(worldName, k -> new HashMap<>())
+                .computeIfAbsent(key, k -> new ArrayList<>())
+                .add(data);
+
+        // 2. Update Spatial Lookup
+        var worldLookup = spatialLookup.computeIfAbsent(worldName, k -> new HashMap<>());
+        StructureLookup lookup = new StructureLookup(key, data);
+
+        // Using blockList() from Cuboid as requested
+        data.cuboid().blockList().forEach(block -> {
+            worldLookup.put(block.getLocation().toVector().toBlockVector(), lookup);
+        });
+    }
+
+    public void removeStructure(@NotNull String worldName, @NotNull NamespacedKey key, @NotNull FurnitureStructureData data) {
+        // 1. Remove from Persistent Storage
+        var worldMap = storage.get(worldName);
+        if (worldMap != null) {
+            var list = worldMap.get(key);
+            if (list != null) list.remove(data);
+        }
+
+        // 2. Remove from Spatial Lookup
+        var worldLookup = spatialLookup.get(worldName);
+        if (worldLookup != null) {
+            data.cuboid().blockList().forEach(block -> {
+                worldLookup.remove(block.getLocation().toVector().toBlockVector());
+            });
         }
     }
 }
