@@ -30,6 +30,7 @@ public class FurnitureInteract implements Listener {
         }
         var furniture = structure.getFurniture();
         furniture.executeCommand(event.getPlayer());
+        event.setCancelled(true);
     }
 
 }
