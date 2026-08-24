@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class FurnitureDestroy implements Listener {
 
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     public void onBreak(BlockBreakEvent event){
         var block = event.getBlock();
         var plugin = JavaPlugin.getPlugin(FurnitureApiPlugin.class);
